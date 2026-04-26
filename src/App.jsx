@@ -11,13 +11,127 @@ import {
   Wand2,
 } from 'lucide-react'
 
+const API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
+const ANALYSIS_MODEL = 'gemini-2.5-flash'
+const SKETCH_MODEL = 'gemini-2.5-flash-image'
+const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504])
+const browserApiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? ''
+
+const analysisSchema = {
+  type: 'object',
+  properties: {
+    top: {
+      type: ['object', 'null'],
+      properties: {
+        name: { type: 'string' },
+        details: { type: 'string' },
+      },
+      required: ['name', 'details'],
+    },
+    bottom: {
+      type: ['object', 'null'],
+      properties: {
+        name: { type: 'string' },
+        details: { type: 'string' },
+      },
+      required: ['name', 'details'],
+    },
+  },
+  required: ['top', 'bottom'],
+}
+
 const initialResults = { top: null, bottom: null }
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const slugify = (value) =>
   value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'sketch'
+
+const extractText = (payload) => {
+  const parts = payload?.candidates?.[0]?.content?.parts ?? []
+  return parts
+    .filter((part) => typeof part.text === 'string')
+    .map((part) => part.text)
+    .join('')
+    .trim()
+}
+
+const extractInlineImage = (payload) => {
+  const parts = payload?.candidates?.[0]?.content?.parts ?? []
+  return parts.find((part) => part.inlineData?.data)?.inlineData ?? null
+}
+
+const normalizeJsonText = (value) =>
+  value
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
+
+const readErrorMessage = async (response) => {
+  const raw = await response.text()
+
+  if (!raw) {
+    return `请求失败（HTTP ${response.status}）`
+  }
+
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed?.error?.message || parsed?.message || raw
+  } catch {
+    return raw
+  }
+}
+
+const fetchWithRetry = async (url, options, maxRetries = 4) => {
+  let lastError = null
+
+  for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+    try {
+      const response = await fetch(url, options)
+
+      if (response.ok) {
+        return response
+      }
+
+      const message = await readErrorMessage(response)
+      const error = new Error(message)
+      error.status = response.status
+      throw error
+    } catch (error) {
+      lastError = error
+      const retryable =
+        error.status == null || RETRYABLE_STATUS_CODES.has(error.status)
+
+      if (!retryable || attempt === maxRetries - 1) {
+        break
+      }
+
+      await sleep(1000 * 2 ** attempt)
+    }
+  }
+
+  throw lastError ?? new Error('请求失败，请稍后重试。')
+}
+
+const callGemini = async ({ apiKey, model, parts, generationConfig }) => {
+  const response = await fetchWithRetry(`${API_BASE_URL}/${model}:generateContent`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig,
+    }),
+  })
+
+  return response.json()
+}
 
 function App() {
   const [image, setImage] = useState(null)
@@ -54,6 +168,121 @@ function App() {
     link.click()
   }
 
+  const generateViaBrowserApi = async () => {
+    const base64Data = image.src.split(',')[1]
+
+    const analysisPrompt = `
+Analyze this runway look and separate it into a top piece and a bottom piece.
+
+Return a JSON object that follows this exact shape:
+{
+  "top": { "name": "...", "details": "..." } | null,
+  "bottom": { "name": "...", "details": "..." } | null
+}
+
+Rules:
+- "top" should describe shirts, jackets, knitwear, dresses, jumpsuits, coats, or any upper/full-body main garment.
+- "bottom" should describe skirts, pants, shorts, or other lower-body garments.
+- If the look is a dress, gown, robe, or jumpsuit, set "top" to that garment and "bottom" to null.
+- "details" must be concise but specific, covering neckline, sleeves, closure, pocket placement, silhouette, hemline, paneling, and any structural trims.
+- Output JSON only, with no markdown fences.
+    `.trim()
+
+    const analysisResult = await callGemini({
+      apiKey: browserApiKey,
+      model: ANALYSIS_MODEL,
+      parts: [
+        { text: analysisPrompt },
+        {
+          inlineData: {
+            mimeType: image.mimeType,
+            data: base64Data,
+          },
+        },
+      ],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: analysisSchema,
+      },
+    })
+
+    const garmentStructure = JSON.parse(normalizeJsonText(extractText(analysisResult)))
+    const nextResults = { top: null, bottom: null }
+
+    for (const part of ['top', 'bottom']) {
+      const itemInfo = garmentStructure?.[part]
+      if (!itemInfo) continue
+
+      const sketchPrompt = `
+Create a professional technical flat sketch for the garment described below.
+
+Garment type: ${itemInfo.name}
+Construction details: ${itemInfo.details}
+
+Strict output requirements:
+1. Pure black-and-white line art only.
+2. No color, no gray, no shading, no gradients, no fabric texture.
+3. Show front and back views side by side.
+4. Use a solid white background.
+5. Use clean CAD-style fashion technical drawing lines suitable for a factory tech pack.
+6. Do not show a human body, mannequin, hands, props, or styling accessories.
+      `.trim()
+
+      const sketchResult = await callGemini({
+        apiKey: browserApiKey,
+        model: SKETCH_MODEL,
+        parts: [
+          { text: sketchPrompt },
+          {
+            inlineData: {
+              mimeType: image.mimeType,
+              data: base64Data,
+            },
+          },
+        ],
+        generationConfig: {
+          responseModalities: ['Image'],
+          imageConfig: {
+            aspectRatio: '4:3',
+          },
+        },
+      })
+
+      const inlineImage = extractInlineImage(sketchResult)
+      if (!inlineImage?.data) {
+        throw new Error(`${part === 'top' ? '上装' : '下装'}线稿没有成功返回图片。`)
+      }
+
+      nextResults[part] = `data:${inlineImage.mimeType || 'image/png'};base64,${inlineImage.data}`
+    }
+
+    return {
+      analysis: garmentStructure,
+      results: nextResults,
+    }
+  }
+
+  const generateViaServerApi = async () => {
+    const response = await fetch('/api/generate-tech-pack', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        imageDataUrl: image.src,
+        mimeType: image.mimeType,
+      }),
+    })
+
+    const payload = await response.json()
+
+    if (!response.ok) {
+      throw new Error(payload?.error || '服务端生成失败。')
+    }
+
+    return payload
+  }
+
   const generateTechPackSketches = async () => {
     if (!image?.src) return
 
@@ -63,22 +292,9 @@ function App() {
     setAnalysis(null)
 
     try {
-      const response = await fetch('/api/generate-tech-pack', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageDataUrl: image.src,
-          mimeType: image.mimeType,
-        }),
-      })
-
-      const payload = await response.json()
-
-      if (!response.ok) {
-        throw new Error(payload?.error || '服务端生成失败。')
-      }
+      const payload = browserApiKey
+        ? await generateViaBrowserApi()
+        : await generateViaServerApi()
 
       startTransition(() => {
         setAnalysis(payload.analysis)
@@ -93,6 +309,10 @@ function App() {
   }
 
   const hasOutput = Boolean(results.top || results.bottom)
+  const deployModeLabel = browserApiKey ? 'Direct Browser API' : 'Secure Server Proxy'
+  const deployModeText = browserApiKey
+    ? '当前构建直接请求 Gemini 官方 API。这个模式适合 GitHub Pages，但请务必把 Key 限制到站点域名。'
+    : '当前构建通过服务端代理请求 Gemini 官方 API。浏览器不会接触真实密钥。'
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(239,241,236,0.88)_42%,_rgba(228,231,226,1)_100%)] px-4 py-5 text-stone-900 md:px-8 md:py-8">
@@ -114,18 +334,16 @@ function App() {
                 </div>
               </div>
               <p className="max-w-3xl text-sm leading-7 text-stone-600">
-                上传秀场照片后，工具会先识别上下装结构，再由服务端直连 Gemini 官方 API
-                生成纯黑白的前后视工艺线稿。浏览器不会接触真实密钥，适合公开分享链接。
+                上传秀场照片后，工具会先识别上下装结构，再调用 Gemini 官方 API 生成纯黑白的前后视工艺线稿。
+                当前代码同时支持 GitHub Pages 直连模式和 Vercel 服务端代理模式。
               </p>
             </div>
 
             <div className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 lg:w-[28rem]">
               <p className="text-xs font-black uppercase tracking-[0.3em] text-stone-500">
-                Secure Gemini Bridge
+                {deployModeLabel}
               </p>
-              <p className="mt-3 text-sm leading-7 text-stone-600">
-                当前部署通过服务端代理请求 Gemini 官方 API。图片从前端上传到受控函数，再由函数持有密钥完成分析与出图。
-              </p>
+              <p className="mt-3 text-sm leading-7 text-stone-600">{deployModeText}</p>
             </div>
           </div>
         </header>
@@ -273,7 +491,7 @@ function App() {
                   </div>
                   <p className="mt-6 text-lg font-black text-stone-900">等待生成黑白线稿包</p>
                   <p className="mt-3 max-w-md text-sm leading-7 text-stone-500">
-                    上传秀场图后，系统会通过服务端安全地调用 Gemini 官方 API，自动识别上下装结构并输出前后视技术线稿。
+                    上传秀场图后，系统会调用 Gemini 官方 API，自动识别上下装结构并输出前后视技术线稿。
                   </p>
                 </div>
               )}
