@@ -5,53 +5,55 @@
 ## 功能
 
 - 上传秀场或造型照片
-- 调用 Gemini 分析服装结构
+- 服务端直连 Gemini 官方 API
 - 自动识别上装与下装
 - 分别生成黑白技术平面线稿
 - 一键下载生成结果
 
-## 为什么这个版本用“本地输入 API Key”
+## 部署方式
 
-这个项目部署在 GitHub Pages。GitHub Pages 只能托管静态前端，不能安全保存服务端密钥。
+这个版本不再使用 GitHub Pages。
 
-所以这里的做法是：
+原因很直接：
 
-- 你在页面中粘贴自己的 Gemini API Key
-- Key 只保存在你的浏览器 `localStorage`
-- 仓库里不会保存任何真实密钥
+- GitHub Pages 只能托管静态前端
+- 公开网页里不能安全保存 Gemini API Key
+- 本项目现在改成了 `前端 + /api 服务端函数` 的结构
 
-如果后面你想做“公开给别人用、并且不暴露 Key”的版本，建议再迁移到 Vercel 或其他支持服务端函数的平台。
+因此在线版本应部署到支持 Serverless Functions 的平台，例如 Vercel。
 
-## 本地运行
+## 本地开发
+
+安装依赖：
 
 ```bash
 npm install
+```
+
+如果只看前端：
+
+```bash
 npm run dev
 ```
 
-## 构建
+如果要连同 Vercel API 函数一起本地跑：
 
 ```bash
-npm run build
+npm run vercel:dev
 ```
 
-## GitHub Pages 发布
+## Gemini Key
 
-仓库内已经包含 `.github/workflows/deploy.yml`。
+生产环境推荐使用：
 
-推送到 `main` 分支后，GitHub Actions 会自动：
+- `GEMINI_API_KEY` 作为平台环境变量
 
-1. 安装依赖
-2. 执行 `npm run build`
-3. 发布 `dist/` 到 GitHub Pages
-
-默认访问路径按仓库名 `fashionsketch-pro` 配置：
-
-`https://zry19950621-star.github.io/fashionsketch-pro/`
+当前仓库不会保存任何真实密钥。
 
 ## 技术栈
 
 - React 19
 - Vite
+- Vercel Functions
 - Tailwind CSS v4
 - Lucide React
