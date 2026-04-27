@@ -182,7 +182,7 @@ Rules:
       ],
       generationConfig: {
         responseMimeType: 'application/json',
-        responseSchema: analysisSchema,
+        responseJsonSchema: analysisSchema,
       },
     })
 
