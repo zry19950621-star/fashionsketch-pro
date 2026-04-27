@@ -98,7 +98,7 @@ function App() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(239,241,236,0.88)_42%,_rgba(228,231,226,1)_100%)] px-4 py-5 text-stone-900 md:px-8 md:py-8">
       <div className="mx-auto max-w-7xl">
         <header className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/85 p-6 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-6">
             <div className="space-y-4">
               <div className="inline-flex items-center gap-3 rounded-full border border-stone-200 bg-stone-50 px-3 py-2">
                 <div className="rounded-2xl bg-stone-950 p-2 text-white">
@@ -114,17 +114,8 @@ function App() {
                 </div>
               </div>
               <p className="max-w-3xl text-sm leading-7 text-stone-600">
-                上传秀场照片后，工具会先识别上下装结构，再由服务端直连 Gemini 官方 API
-                生成纯黑白的前后视工艺线稿。浏览器不会接触真实密钥，适合公开分享链接。
-              </p>
-            </div>
-
-            <div className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 lg:w-[28rem]">
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-stone-500">
-                Secure Gemini Bridge
-              </p>
-              <p className="mt-3 text-sm leading-7 text-stone-600">
-                当前部署通过服务端代理请求 Gemini 官方 API。图片从前端上传到受控函数，再由函数持有密钥完成分析与出图。
+                上传秀场照片后，工具会先识别上下装结构，再生成纯黑白的前后视工艺线稿，
+                方便整理 tech pack、工艺单与打版沟通。
               </p>
             </div>
           </div>
@@ -273,7 +264,8 @@ function App() {
                   </div>
                   <p className="mt-6 text-lg font-black text-stone-900">等待生成黑白线稿包</p>
                   <p className="mt-3 max-w-md text-sm leading-7 text-stone-500">
-                    上传秀场图后，系统会通过服务端安全地调用 Gemini 官方 API，自动识别上下装结构并输出前后视技术线稿。
+                    上传秀场图后，系统会自动识别上下装结构，并输出适合 tech pack
+                    使用的前后视技术线稿。
                   </p>
                 </div>
               )}
