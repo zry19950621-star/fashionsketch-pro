@@ -127,7 +127,7 @@ function AuthScreen({
             会员登录
           </h2>
           <p className="mt-3 text-sm leading-7 text-stone-600">
-            仅向购买世界时装阅览室的 Notion 用户开放。实际拦截由站点邮箱白名单控制。
+            仅向购买世界时装阅览室的 Notion 用户开放。
           </p>
 
           {errorMessage && (
@@ -146,7 +146,7 @@ function AuthScreen({
               <code className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">
                 AUTH_SESSION_SECRET
               </code>
-              以及购买用户邮箱白名单。
+              后才能启用登录。
             </div>
           )}
 
