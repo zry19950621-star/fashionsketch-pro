@@ -45,12 +45,11 @@ npm run vercel:dev
 
 - `GEMINI_API_KEY`
 
-如果要启用邮箱验证码登录，再额外配置：
+如果要启用邮箱密码登录，再额外配置：
 
 - `EMAIL_AUTH_ENABLED=true`
-- `RESEND_API_KEY`
-- `EMAIL_AUTH_FROM`
 - `AUTH_SESSION_SECRET`
+- `AUTH_LOGIN_PASSWORD`
 
 可选白名单：
 
