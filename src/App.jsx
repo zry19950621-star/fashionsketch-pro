@@ -85,17 +85,16 @@ function AuthScreen({
               <p className="text-[0.65rem] font-black uppercase tracking-[0.35em] text-stone-400">
                 FashionSketch Pro
               </p>
-              <p className="text-sm font-black text-stone-950">Email Sign-In Required</p>
+              <p className="text-sm font-black text-stone-950">Notion Email Sign-In</p>
             </div>
           </div>
 
           <div className="mt-8 max-w-2xl">
             <h1 className="text-4xl font-black tracking-tight text-stone-950 md:text-5xl">
-              先用邮箱登录，再生成秀场 tech pack 线稿
+              先用 Notion 邮箱登录，再生成秀场 tech pack 线稿
             </h1>
             <p className="mt-5 text-base leading-8 text-stone-600">
-              输入邮箱后，系统会向该邮箱发送 6 位验证码。验证成功后才允许上传秀场图并调用
-              Gemini 生成工艺线稿。
+              默认建议填写你的 Notion 登录邮箱。系统会向该邮箱发送 6 位验证码；如果你使用其他可收验证码的邮箱，也同样可以登录。
             </p>
           </div>
 
@@ -104,7 +103,9 @@ function AuthScreen({
               <p className="text-xs font-black uppercase tracking-[0.3em] text-stone-400">
                 Step 1
               </p>
-              <p className="mt-3 text-sm font-bold text-stone-950">输入可接收邮件的邮箱</p>
+              <p className="mt-3 text-sm font-bold text-stone-950">
+                输入 Notion 邮箱或其他常用邮箱
+              </p>
             </div>
             <div className="rounded-[1.8rem] border border-stone-200 bg-stone-50 p-5">
               <p className="text-xs font-black uppercase tracking-[0.3em] text-stone-400">
@@ -124,14 +125,14 @@ function AuthScreen({
         <section className="rounded-[2.5rem] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(243,244,241,0.95))] p-8 shadow-[0_25px_80px_rgba(15,23,42,0.06)]">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-[0.26em] text-emerald-700">
             <ShieldCheck size={14} />
-            Email Access
+            Notion Mail Access
           </div>
 
           <h2 className="mt-6 text-2xl font-black tracking-tight text-stone-950">
-            使用邮箱验证码登录
+            使用 Notion 邮箱登录
           </h2>
           <p className="mt-3 text-sm leading-7 text-stone-600">
-            如果站点配置了邮箱白名单或域名白名单，只有允许的邮箱才能收到验证码并登录。
+            页面文案默认按 Notion 邮箱描述，但实际仍支持其他可接收验证码的邮箱登录。若站点配置了白名单，则只有允许的邮箱能收到验证码。
           </p>
 
           {errorMessage && (
