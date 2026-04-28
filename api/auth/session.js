@@ -2,7 +2,7 @@ import {
   getAuthConfig,
   isAuthConfigured,
   readSessionFromRequest,
-} from '../_lib/notion-auth.js'
+} from '../_lib/auth.js'
 
 export default function handler(request, response) {
   const config = getAuthConfig(request)

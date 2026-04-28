@@ -5,8 +5,10 @@ import {
   Download,
   Eye,
   FileText,
+  KeyRound,
   LayoutGrid,
   LogOut,
+  Mail,
   RefreshCw,
   ShieldCheck,
   Upload,
@@ -16,7 +18,7 @@ import {
 const initialResults = { top: null, bottom: null }
 const initialAuthState = {
   status: 'loading',
-  authEnabled: false,
+  authEnabled: true,
   authConfigured: false,
   user: null,
 }
@@ -26,6 +28,8 @@ const slugify = (value) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'sketch'
+
+const isValidClientEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
 
 function FullScreenShell({ children }) {
   return (
@@ -55,7 +59,20 @@ function SessionLoadingScreen() {
   )
 }
 
-function AuthScreen({ authConfigured, errorMessage, onLogin }) {
+function AuthScreen({
+  authConfigured,
+  authEmail,
+  authCode,
+  codeRequestedFor,
+  errorMessage,
+  successMessage,
+  isSubmitting,
+  onEmailChange,
+  onCodeChange,
+  onRequestCode,
+  onVerifyCode,
+  onResetFlow,
+}) {
   return (
     <FullScreenShell>
       <div className="grid min-h-[calc(100vh-4rem)] items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
@@ -68,17 +85,17 @@ function AuthScreen({ authConfigured, errorMessage, onLogin }) {
               <p className="text-[0.65rem] font-black uppercase tracking-[0.35em] text-stone-400">
                 FashionSketch Pro
               </p>
-              <p className="text-sm font-black text-stone-950">Notion Sign-In Required</p>
+              <p className="text-sm font-black text-stone-950">Email Sign-In Required</p>
             </div>
           </div>
 
           <div className="mt-8 max-w-2xl">
             <h1 className="text-4xl font-black tracking-tight text-stone-950 md:text-5xl">
-              先登录，再生成秀场 tech pack 线稿
+              先用邮箱登录，再生成秀场 tech pack 线稿
             </h1>
             <p className="mt-5 text-base leading-8 text-stone-600">
-              使用你的 Notion 账号邮箱登录后，才能上传秀场图并调用 Gemini 生成工艺线稿。
-              登录成功后，系统会读取你的 Notion 授权邮箱并建立站内会话。
+              输入邮箱后，系统会向该邮箱发送 6 位验证码。验证成功后才允许上传秀场图并调用
+              Gemini 生成工艺线稿。
             </p>
           </div>
 
@@ -87,19 +104,19 @@ function AuthScreen({ authConfigured, errorMessage, onLogin }) {
               <p className="text-xs font-black uppercase tracking-[0.3em] text-stone-400">
                 Step 1
               </p>
-              <p className="mt-3 text-sm font-bold text-stone-950">使用 Notion 完成授权</p>
+              <p className="mt-3 text-sm font-bold text-stone-950">输入可接收邮件的邮箱</p>
             </div>
             <div className="rounded-[1.8rem] border border-stone-200 bg-stone-50 p-5">
               <p className="text-xs font-black uppercase tracking-[0.3em] text-stone-400">
                 Step 2
               </p>
-              <p className="mt-3 text-sm font-bold text-stone-950">回到站内恢复会话</p>
+              <p className="mt-3 text-sm font-bold text-stone-950">填写 6 位验证码</p>
             </div>
             <div className="rounded-[1.8rem] border border-stone-200 bg-stone-50 p-5">
               <p className="text-xs font-black uppercase tracking-[0.3em] text-stone-400">
                 Step 3
               </p>
-              <p className="mt-3 text-sm font-bold text-stone-950">继续上传图片并出图</p>
+              <p className="mt-3 text-sm font-bold text-stone-950">进入工作台继续出图</p>
             </div>
           </div>
         </section>
@@ -107,14 +124,14 @@ function AuthScreen({ authConfigured, errorMessage, onLogin }) {
         <section className="rounded-[2.5rem] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(243,244,241,0.95))] p-8 shadow-[0_25px_80px_rgba(15,23,42,0.06)]">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-[0.26em] text-emerald-700">
             <ShieldCheck size={14} />
-            Workspace Access
+            Email Access
           </div>
 
           <h2 className="mt-6 text-2xl font-black tracking-tight text-stone-950">
-            使用 Notion 登录
+            使用邮箱验证码登录
           </h2>
           <p className="mt-3 text-sm leading-7 text-stone-600">
-            登录后会按站点配置校验邮箱、域名或 workspace 范围。未授权用户不会进入出图工作台。
+            如果站点配置了邮箱白名单或域名白名单，只有允许的邮箱才能收到验证码并登录。
           </p>
 
           {errorMessage && (
@@ -124,31 +141,117 @@ function AuthScreen({ authConfigured, errorMessage, onLogin }) {
             </div>
           )}
 
-          {!authConfigured && (
-            <div className="mt-6 rounded-[1.75rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-7 text-amber-800">
-              还没有配置 Notion OAuth 环境变量。需要先注入
-              <code className="mx-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">
-                NOTION_OAUTH_CLIENT_ID
-              </code>
-              <code className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">
-                NOTION_OAUTH_CLIENT_SECRET
-              </code>
-              <code className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">
-                NOTION_SESSION_SECRET
-              </code>
-              等配置后再启用。
+          {successMessage && (
+            <div className="mt-6 flex items-start gap-3 rounded-[1.75rem] border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm leading-6 text-emerald-700">
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+              <span>{successMessage}</span>
             </div>
           )}
 
-          <button
-            type="button"
-            disabled={!authConfigured}
-            onClick={onLogin}
-            className="mt-8 inline-flex w-full items-center justify-center gap-3 rounded-[1.6rem] bg-stone-950 px-5 py-4 text-sm font-black text-white shadow-[0_18px_50px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5 hover:bg-stone-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
-          >
-            <ShieldCheck size={18} />
-            使用 Notion 登录
-          </button>
+          {!authConfigured && (
+            <div className="mt-6 rounded-[1.75rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-7 text-amber-800">
+              还没有配置邮箱登录环境变量。需要先注入
+              <code className="mx-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">
+                RESEND_API_KEY
+              </code>
+              <code className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">
+                EMAIL_AUTH_FROM
+              </code>
+              <code className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">
+                AUTH_SESSION_SECRET
+              </code>
+              后才能发送验证码。
+            </div>
+          )}
+
+          <div className="mt-8 space-y-4">
+            <label className="block">
+              <span className="mb-2 block text-xs font-black uppercase tracking-[0.3em] text-stone-400">
+                Email
+              </span>
+              <div className="flex items-center gap-3 rounded-[1.4rem] border border-stone-200 bg-white px-4 py-4 shadow-sm">
+                <Mail size={18} className="text-stone-400" />
+                <input
+                  type="email"
+                  value={authEmail}
+                  onChange={(event) => onEmailChange(event.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full border-none bg-transparent text-sm font-medium text-stone-900 outline-none placeholder:text-stone-400"
+                />
+              </div>
+            </label>
+
+            {codeRequestedFor && (
+              <label className="block">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="block text-xs font-black uppercase tracking-[0.3em] text-stone-400">
+                    Verification Code
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onResetFlow}
+                    className="text-xs font-bold text-stone-500 transition hover:text-stone-950"
+                  >
+                    更换邮箱
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 rounded-[1.4rem] border border-stone-200 bg-white px-4 py-4 shadow-sm">
+                  <KeyRound size={18} className="text-stone-400" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={authCode}
+                    onChange={(event) =>
+                      onCodeChange(event.target.value.replace(/\D/g, '').slice(0, 6))
+                    }
+                    placeholder="输入 6 位验证码"
+                    className="w-full border-none bg-transparent text-sm font-medium tracking-[0.35em] text-stone-900 outline-none placeholder:tracking-normal placeholder:text-stone-400"
+                  />
+                </div>
+              </label>
+            )}
+          </div>
+
+          {!codeRequestedFor ? (
+            <button
+              type="button"
+              disabled={!authConfigured || !isValidClientEmail(authEmail) || isSubmitting}
+              onClick={onRequestCode}
+              className="mt-8 inline-flex w-full items-center justify-center gap-3 rounded-[1.6rem] bg-stone-950 px-5 py-4 text-sm font-black text-white shadow-[0_18px_50px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5 hover:bg-stone-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw size={18} className="animate-spin" />
+                  正在发送验证码...
+                </>
+              ) : (
+                <>
+                  <Mail size={18} />
+                  发送邮箱验证码
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={!authConfigured || authCode.length !== 6 || isSubmitting}
+              onClick={onVerifyCode}
+              className="mt-8 inline-flex w-full items-center justify-center gap-3 rounded-[1.6rem] bg-stone-950 px-5 py-4 text-sm font-black text-white shadow-[0_18px_50px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5 hover:bg-stone-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw size={18} className="animate-spin" />
+                  正在校验验证码...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck size={18} />
+                  验证并登录
+                </>
+              )}
+            </button>
+          )}
         </section>
       </div>
     </FullScreenShell>
@@ -157,13 +260,12 @@ function AuthScreen({ authConfigured, errorMessage, onLogin }) {
 
 function App() {
   const [authState, setAuthState] = useState(initialAuthState)
-  const [authErrorMessage, setAuthErrorMessage] = useState(() => {
-    if (typeof window === 'undefined') {
-      return null
-    }
-
-    return new URLSearchParams(window.location.search).get('auth_error')
-  })
+  const [authEmail, setAuthEmail] = useState('')
+  const [authCode, setAuthCode] = useState('')
+  const [codeRequestedFor, setCodeRequestedFor] = useState('')
+  const [authErrorMessage, setAuthErrorMessage] = useState(null)
+  const [authSuccessMessage, setAuthSuccessMessage] = useState(null)
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false)
   const [image, setImage] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [results, setResults] = useState(initialResults)
@@ -199,6 +301,7 @@ function App() {
 
       if (payload.authenticated) {
         setAuthErrorMessage(null)
+        setAuthSuccessMessage(null)
       }
     } catch (error) {
       setAuthState({
@@ -212,15 +315,6 @@ function App() {
   }
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search)
-
-    if (searchParams.has('auth_error')) {
-      searchParams.delete('auth_error')
-      const nextQuery = searchParams.toString()
-      const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`
-      window.history.replaceState({}, '', nextUrl)
-    }
-
     const timer = window.setTimeout(() => {
       void syncSession()
     }, 0)
@@ -255,6 +349,79 @@ function App() {
     link.href = dataUrl
     link.download = fileName
     link.click()
+  }
+
+  const requestEmailCode = async () => {
+    setIsAuthSubmitting(true)
+    setAuthErrorMessage(null)
+    setAuthSuccessMessage(null)
+
+    try {
+      const response = await fetch('/api/auth/email/request-code', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: authEmail,
+        }),
+      })
+
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload?.error || '验证码发送失败。')
+      }
+
+      setAuthEmail(payload.email)
+      setCodeRequestedFor(payload.email)
+      setAuthCode('')
+      setAuthSuccessMessage(`验证码已发送至 ${payload.email}。`)
+    } catch (error) {
+      setAuthErrorMessage(error.message || '验证码发送失败。')
+    } finally {
+      setIsAuthSubmitting(false)
+    }
+  }
+
+  const verifyEmailCode = async () => {
+    setIsAuthSubmitting(true)
+    setAuthErrorMessage(null)
+
+    try {
+      const response = await fetch('/api/auth/email/verify-code', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: authEmail,
+          code: authCode,
+        }),
+      })
+
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload?.error || '验证码校验失败。')
+      }
+
+      setCodeRequestedFor('')
+      setAuthCode('')
+      setAuthSuccessMessage(null)
+      await syncSession()
+    } catch (error) {
+      setAuthErrorMessage(error.message || '验证码校验失败。')
+    } finally {
+      setIsAuthSubmitting(false)
+    }
+  }
+
+  const resetEmailAuthFlow = () => {
+    setCodeRequestedFor('')
+    setAuthCode('')
+    setAuthErrorMessage(null)
+    setAuthSuccessMessage(null)
   }
 
   const generateTechPackSketches = async () => {
@@ -304,10 +471,6 @@ function App() {
     }
   }
 
-  const beginNotionLogin = () => {
-    window.location.assign('/api/auth/notion/login')
-  }
-
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', {
@@ -316,6 +479,11 @@ function App() {
       })
     } finally {
       resetWorkspace()
+      setCodeRequestedFor('')
+      setAuthCode('')
+      setAuthEmail('')
+      setAuthErrorMessage(null)
+      setAuthSuccessMessage(null)
       setAuthState((current) => ({
         ...current,
         status: 'anonymous',
@@ -332,8 +500,17 @@ function App() {
     return (
       <AuthScreen
         authConfigured={authState.authConfigured}
+        authEmail={authEmail}
+        authCode={authCode}
+        codeRequestedFor={codeRequestedFor}
         errorMessage={authErrorMessage}
-        onLogin={beginNotionLogin}
+        successMessage={authSuccessMessage}
+        isSubmitting={isAuthSubmitting}
+        onEmailChange={setAuthEmail}
+        onCodeChange={setAuthCode}
+        onRequestCode={requestEmailCode}
+        onVerifyCode={verifyEmailCode}
+        onResetFlow={resetEmailAuthFlow}
       />
     )
   }
@@ -364,22 +541,17 @@ function App() {
             </p>
           </div>
 
-          {authState.authEnabled && authState.user && (
+          {authState.user && (
             <div className="rounded-[1.8rem] border border-stone-200 bg-stone-50 px-5 py-4 lg:min-w-[19rem]">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.28em] text-stone-400">
-                    Signed In
+                    Email Verified
                   </p>
                   <p className="mt-2 text-sm font-black text-stone-950">
                     {authState.user.name || authState.user.email}
                   </p>
                   <p className="mt-1 text-xs text-stone-500">{authState.user.email}</p>
-                  {authState.user.workspaceName && (
-                    <p className="mt-2 text-xs font-bold uppercase tracking-[0.22em] text-stone-400">
-                      {authState.user.workspaceName}
-                    </p>
-                  )}
                 </div>
 
                 <button
