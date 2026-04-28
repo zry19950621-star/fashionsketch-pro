@@ -94,7 +94,7 @@ function AuthScreen({
               先用 Notion 邮箱登录，再生成秀场 tech pack 线稿
             </h1>
             <p className="mt-5 text-base leading-8 text-stone-600">
-              默认建议填写你的 Notion 登录邮箱。系统会向该邮箱发送 6 位验证码；如果你使用其他可收验证码的邮箱，也同样可以登录。
+              页面文案默认按 Notion 邮箱描述，但实际仍支持其他邮箱登录
             </p>
           </div>
 
@@ -132,7 +132,7 @@ function AuthScreen({
             使用 Notion 邮箱登录
           </h2>
           <p className="mt-3 text-sm leading-7 text-stone-600">
-            页面文案默认按 Notion 邮箱描述，但实际仍支持其他可接收验证码的邮箱登录。若站点配置了白名单，则只有允许的邮箱能收到验证码。
+            输入邮箱后，系统会发送 6 位验证码完成登录。若站点配置了白名单，则只有允许的邮箱能收到验证码。
           </p>
 
           {errorMessage && (
