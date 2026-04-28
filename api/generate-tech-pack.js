@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { ensureAuthenticated, getAuthConfig } from './_lib/notion-auth.js'
 
 const API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 const ANALYSIS_MODEL = 'gemini-2.5-flash'
@@ -131,6 +132,14 @@ export default async function handler(request, response) {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST')
     return response.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const authConfig = getAuthConfig(request)
+  const authResult = ensureAuthenticated(request, authConfig)
+  if (!authResult.authenticated) {
+    return response.status(401).json({
+      error: authResult.reason,
+    })
   }
 
   const apiKey = await resolveApiKey()
