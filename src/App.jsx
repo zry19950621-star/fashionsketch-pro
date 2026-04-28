@@ -328,7 +328,7 @@ function App() {
     return <SessionLoadingScreen />
   }
 
-  if (authState.authEnabled && authState.status !== 'authenticated') {
+  if (authState.status !== 'authenticated') {
     return (
       <AuthScreen
         authConfigured={authState.authConfigured}

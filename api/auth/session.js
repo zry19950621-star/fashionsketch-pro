@@ -14,7 +14,7 @@ export default function handler(request, response) {
   return response.status(200).json({
     authEnabled: config.authEnabled,
     authConfigured,
-    authenticated: config.authEnabled ? Boolean(session) : true,
+    authenticated: Boolean(session),
     user: session,
   })
 }
