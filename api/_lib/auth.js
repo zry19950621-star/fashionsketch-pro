@@ -3,6 +3,7 @@ import crypto from 'node:crypto'
 const SESSION_COOKIE_NAME = 'fashionsketch_session'
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const DEFAULT_SESSION_SECRET = 'fashionsketch-pro-default-session-secret'
 
 const parseList = (value) =>
   (value || '')
@@ -124,7 +125,7 @@ export const getAuthConfig = () => ({
   sessionSecret:
     process.env.AUTH_SESSION_SECRET?.trim() ||
     process.env.NOTION_SESSION_SECRET?.trim() ||
-    '',
+    DEFAULT_SESSION_SECRET,
   loginPassword:
     process.env.AUTH_LOGIN_PASSWORD?.trim() ||
     process.env.EMAIL_AUTH_PASSWORD?.trim() ||
@@ -136,7 +137,7 @@ export const getAuthConfig = () => ({
 })
 
 export const isAuthConfigured = (config) =>
-  Boolean(config.sessionSecret && config.loginPassword)
+  Boolean(config.authEnabled && config.sessionSecret)
 
 export const assertEmailAllowed = (email, config) => {
   const normalizedEmail = normalizeEmail(email)
@@ -165,6 +166,10 @@ export const assertPasswordMatches = (inputPassword, config) => {
 
   if (!providedPassword) {
     throw new Error('请输入登录密码。')
+  }
+
+  if (!expectedPassword) {
+    return
   }
 
   if (providedPassword.length !== expectedPassword.length) {
@@ -220,13 +225,6 @@ export const ensureAuthenticated = (request, config) => {
     return {
       authenticated: true,
       session: null,
-    }
-  }
-
-  if (!isAuthConfigured(config)) {
-    return {
-      authenticated: false,
-      reason: '邮箱密码登录尚未完成环境配置。',
     }
   }
 

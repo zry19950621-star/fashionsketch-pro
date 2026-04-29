@@ -3,7 +3,6 @@ import {
   assertPasswordMatches,
   createSessionCookie,
   getAuthConfig,
-  isAuthConfigured,
   normalizeEmail,
 } from '../_lib/auth.js'
 
@@ -16,10 +15,6 @@ export default function handler(request, response) {
   const config = getAuthConfig()
   if (!config.authEnabled) {
     return response.status(403).json({ error: '当前站点未启用邮箱密码登录。' })
-  }
-
-  if (!isAuthConfigured(config)) {
-    return response.status(500).json({ error: '邮箱密码登录尚未完成环境配置。' })
   }
 
   try {

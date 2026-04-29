@@ -20,7 +20,7 @@ const initialResults = { top: null, bottom: null }
 const initialAuthState = {
   status: 'loading',
   authEnabled: true,
-  authConfigured: false,
+  authConfigured: true,
   user: null,
 }
 
@@ -61,7 +61,6 @@ function SessionLoadingScreen() {
 }
 
 function AuthScreen({
-  authConfigured,
   authEmail,
   authPassword,
   errorMessage,
@@ -173,7 +172,7 @@ function AuthScreen({
 
           <button
             type="button"
-            disabled={!authConfigured || !isValidClientEmail(authEmail) || !authPassword || isSubmitting}
+            disabled={!isValidClientEmail(authEmail) || !authPassword || isSubmitting}
             onClick={onLogin}
             className="mt-8 inline-flex w-full items-center justify-center gap-3 rounded-[1.6rem] bg-stone-950 px-5 py-4 text-sm font-black text-white shadow-[0_18px_50px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5 hover:bg-stone-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
           >
@@ -241,7 +240,7 @@ function App() {
       setAuthState({
         status: 'anonymous',
         authEnabled: true,
-        authConfigured: false,
+        authConfigured: true,
         user: null,
       })
       setAuthErrorMessage(error.message || '登录状态检查失败。')
@@ -388,7 +387,6 @@ function App() {
   if (authState.status !== 'authenticated') {
     return (
       <AuthScreen
-        authConfigured={authState.authConfigured}
         authEmail={authEmail}
         authPassword={authPassword}
         errorMessage={authErrorMessage}

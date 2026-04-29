@@ -7,7 +7,7 @@ import {
 export default function handler(request, response) {
   const config = getAuthConfig(request)
   const authConfigured = isAuthConfigured(config)
-  const session = authConfigured
+  const session = config.authEnabled
     ? readSessionFromRequest(request, config.sessionSecret)
     : null
 
