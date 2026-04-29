@@ -137,19 +137,6 @@ function AuthScreen({
             </div>
           )}
 
-          {!authConfigured && (
-            <div className="mt-6 rounded-[1.75rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-7 text-amber-800">
-              还没有配置邮箱密码登录环境变量。需要先注入
-              <code className="mx-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">
-                AUTH_LOGIN_PASSWORD
-              </code>
-              <code className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">
-                AUTH_SESSION_SECRET
-              </code>
-              后才能启用登录。
-            </div>
-          )}
-
           <div className="mt-8 space-y-4">
             <label className="block">
               <span className="mb-2 block text-xs font-black uppercase tracking-[0.3em] text-stone-400">
